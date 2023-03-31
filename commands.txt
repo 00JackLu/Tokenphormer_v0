@@ -1,0 +1,36 @@
+python train.py --dataset cora --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 512 \
+          --t_nums 20  --w_len 20 --n_heads 8 --n_layers 1 --pe_dim 3 --peak_lr 0.01  --weight_decay=1e-05 
+
+python train.py --dataset citeseer --device 0 --batch_size 2000 --dropout 0.3 --hidden_dim 512 \
+          --hops 7  --n_heads 8 --n_layers 1 --pe_dim 3 --peak_lr 0.001  --weight_decay=1e-05 
+
+python train.py --dataset pubmed --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 512 \
+          --hops 7  --n_heads 8 --n_layers 1 --pe_dim 15 --peak_lr 0.001  --weight_decay=1e-05 
+
+python train.py --dataset corafull --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 512 \
+          --hops 3  --n_heads 1 --n_layers 1 --pe_dim 10 --peak_lr 0.01  --weight_decay=1e-05 
+
+python train.py --dataset computer --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 512 \
+          --hops 3  --n_heads 8 --n_layers 1 --pe_dim 15 --peak_lr 0.001  --weight_decay=1e-05 
+
+python train.py --dataset photo --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 128 \
+          --hops 3  --n_heads 8 --n_layers 1 --pe_dim 10 --peak_lr 0.001  --weight_decay=1e-05 
+
+python train.py --dataset cs --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 512 \
+          --hops 3  --n_heads 8 --n_layers 3 --pe_dim 10 --peak_lr 0.001  --weight_decay=1e-05 
+
+python train.py --dataset physics --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 128 \
+          --hops 5  --n_heads 8 --n_layers 1 --pe_dim 10 --peak_lr 0.01  --weight_decay=1e-05 
+
+python train.py --dataset aminer --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 512 \
+          --hops 16  --n_heads 8 --n_layers 3 --pe_dim 10 --peak_lr 0.001  --weight_decay=1e-05 
+
+python train.py --dataset reddit --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 512 \
+          --hops 10  --n_heads 8 --n_layers 1 --pe_dim 10 --peak_lr 0.001  --weight_decay=1e-05 
+
+python train.py --dataset Amazon2M --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 512 \
+          --hops 10  --n_heads 1 --n_layers 1 --pe_dim 3 --peak_lr 0.001  --weight_decay=1e-05 
+
+
+
+

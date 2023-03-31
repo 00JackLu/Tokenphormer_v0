@@ -1,8 +1,5 @@
-# NAGphormer
-This is the code for our ICLR 2023 paper 
-**NAGphormer: A Tokenized Graph Transformer for Node Classification in Large Graphs**.
-
-![NAGphormer](./NAGphormer.jpg)
+# Token_net
+This is the code for our 2023 Research
 
 ## Requirements
 Python == 3.8
@@ -26,16 +23,3 @@ For small-scale datasets, you can download them from https://docs.dgl.ai/tutoria
 
 For large-scale datasets, you can download them from https://github.com/wzfhaha/GRAND-plus.
 
-
-
-## Cite
-If you find this code useful, please consider citing the original work by authors:
-```
-@inproceedings{chennagphormer,
-  title={NAGphormer: A Tokenized Graph Transformer for Node Classification in Large Graphs},
-  author={Chen, Jinsong and Gao, Kaiyuan and Li, Gaichao and He, Kun},
-  booktitle={Proceedings of the International Conference on Learning Representations},
-  year={2023}
-}
-```
-# Token_net
