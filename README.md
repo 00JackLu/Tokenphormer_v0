@@ -10,6 +10,7 @@ dgl == 0.9
 
 CUDA == 10.2
 
+graph-walker == 1.0.6
 
 ## Usage
 

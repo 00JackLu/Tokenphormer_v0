@@ -1,0 +1,2 @@
+token_nums,walk_length,time,epoch,train Loss,training accuracy,n_heads
+5,3,792.2012s,10,1.0251,0.8440,10

@@ -17,6 +17,8 @@ from tqdm import tqdm
 import dgl
 import walker
 import itertools
+import dgl.function as fn
+    
 
 def normalize_features(mx):
     """Row-normalize sparse matrix"""
@@ -95,42 +97,186 @@ def laplacian_positional_encoding(g, pos_enc_dim):
     return lap_pos_enc
 
 
-def cut_list(in_l):
-    n = len(in_l)
-    out_list = []
-    for i in range(n):
-        temp_list = in_l[:i+1]
-        out_list.append(temp_list)
-    return list(itertools.chain(*out_list))
+def random_walk_gen(G, t_num, w_len, dataset):
+    G = dgl.DGLGraph(G)
+    # nodes_features = torch.empty(G.nodes().size(dim=0), t_num*w_len)
+    nodes_features = [] 
+    # 遍历张量
+    for i in range(G.nodes().size(dim=0)):
+        strat_nodes = [i] * t_num
+
+        token_path = dgl.sampling.random_walk(G, strat_nodes, length=w_len)
+        print(token_path[0])
+        nodes_features.append(token_path[0])
+    torch.save(nodes_features, dataset + '_t_num=' + str(t_num) + '_w_len=' + str(w_len) + '.pt')
+        
+    
+# def get_token(G, features, W, num_steps, dataset):
+#     # print(features.shape[1])
+#     nodes_features = torch.empty(features.shape[0], (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
+    
+#     print('loading the pt file now')
+#     # print(f"Random Walk Begin! Random Walk nums:{W}, length:{num_steps}")
+#     for node in range(features.shape[0]):
+#         # walk = walker.random_walks(G, n_walks=W, walk_len=num_steps, start_nodes=[node])
+#         # walk = walk.tolist()
+#         # print(walk)
+       
+#         pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', map_location=torch.device('cpu'))
+#         walk = pt[node].tolist()
+#         # print(walk)
+#         # add the features of the nodes in the random walk to the nodes_features tensor      
+#         i = 1
+#         # 遍历walk
+#         for j in range(len(walk)):
+#             sub_list = walk[j]
+#             feature = []
+#             for node in sub_list:  
+#                 if feature == []:
+#                     feature = features[node]
+#                 else:
+#                     # feature = feature+features[node]
+#                     feature = torch.cat([feature, features[node]], dim=0)
+#                 temp = torch.zeros(features[node].size(dim=0) * (num_steps + 1) - feature.size(dim=0))               
+                    
+                   
+#                 # print(features[node])
+#                 nodes_features[node, i, :] = torch.cat([feature, temp], dim=0)      
+#                 i += 1
+#             # nodes_features[node, j, :] = torch.cat(node_features, dim=0)
+            
+#     print(f"Random Walk Done!")
+#     print(nodes_features.size())
+#     # nodes_features = nodes_features.squeeze()            
+#     return nodes_features
 
 
 def get_token(G, features, W, num_steps):
+    print(features.shape[1])
     
-    nodes_features = torch.empty(features.shape[0], W+1, features.shape[1])
+    nodes_features = torch.empty(features.shape[0], (W*num_steps)+1, features.shape[1]*num_steps)
     
-    print(f"Random Walk Begin! Random Walk nums:{W}, length:{num_steps}, ")
+    print(f"Random Walk Begin! Random Walk nums:{W}, length:{num_steps}")
     for node in range(features.shape[0]):
         walk = walker.random_walks(G, n_walks=W, walk_len=num_steps, start_nodes=[node])
         walk = walk.tolist()
-        # print(walk)
+        print(walk)
         # add the features of the nodes in the random walk to the nodes_features tensor      
-        token_features = []  
+        i = 1
+        # 遍历walk
         for j in range(len(walk)):
-            node_features = []
-            sub_lists = cut_list(walk[j])  
-            for n in sub_lists:               
-                node_features.append(features[n])
-                
-            temp = node_features[0]
-            for t in node_features[1:]:
-                temp = t + temp
-                
-            nodes_features[node, j, :] = temp
+            sub_list = walk[j]
+            feature = []
+            
+
+            for node in sub_list:  
+                if feature == []:
+                    feature = features[node]
+                else:
+                    # feature = feature+features[node]
+                    feature = torch.cat([feature, features[node]], dim=0)
+                temp = torch.zeros(features[node].size(dim=0) * num_steps - feature.size(dim=0))               
+                    
+                   
+                # print(features[node])
+                nodes_features[node, i, :] = torch.cat([feature, temp], dim=0)      
+                i += 1
             # nodes_features[node, j, :] = torch.cat(node_features, dim=0)
+            
     print(f"Random Walk Done!")
+    print(nodes_features.size())
     # nodes_features = nodes_features.squeeze()            
     return nodes_features
+
+
+# def compute_pagerank(g):
+#     DAMP = 0.85
+#     K = 10
+#     N = g.number_of_nodes()
+#     g.ndata["pv"] = torch.ones(N) / N
+#     degrees = g.out_degrees(g.nodes()).type(torch.float32)
+#     for k in range(K):
+#         g.ndata["pv"] = g.ndata["pv"] / degrees
+#         g.update_all(
+#             message_func=fn.copy_u(u="pv", out="m"),
+#             reduce_func=fn.sum(msg="m", out="pv"),
+#         )
+#         g.ndata["pv"] = (1 - DAMP) / N + DAMP * g.ndata["pv"]
+#     return g.ndata["pv"]
+
+
+# def get_token(G, features, W, num_steps):
+    
+#     nodes_features = torch.empty(features.shape[0], (W*num_steps)+1, features.shape[1])
+
+#     g = dgl.from_networkx(G)
+
+    
+#     pv = compute_pagerank(g)
+
+#     print(f"Random Walk Begin! Random Walk nums:{W}, length:{num_steps}, ")
+#     p = 1.0
+#     q = 0.5
+
+
+#     # Convert the PageRank scores to probabilities
+#     pr_probs = torch.softmax(pv, dim=0)
+    
+#     walks = dgl.sampling.random_walk(
+#         G, 
+#         prob=pr_probs, num_walks=W, 
+#         walk_length=num_steps, p=p, q=q
+#     )
+#     # walks = dgl.sampling.random_walk(G, seeds=[0], length=num_steps, num_walks=W)
+#     print(f"Random Walk Done!")
+#     for node in range(features.shape[0]):
+#         walk = walks.tolist()[node]
+#         print(walk)
+#         # add the features of the nodes in the random walk to the nodes_features tensor      
+#         i = 1
+#         # 遍历walk
+#         for j in range(len(walk)):
+#             sub_list = walk[j]
+#             feature = []
             
+#             for node in sub_list:  
+#                 if feature == []:
+#                     feature = features[node]
+#                 else:
+#                     feature = feature+features[node]
+#                 # print(features[node])
+#                 nodes_features[node, i, :] = feature      
+#                 i += 1
+#             # nodes_features[node, j, :] = torch.cat(node_features, dim=0)
+    
+#     print(nodes_features)
+#     # nodes_features = nodes_features.squeeze()            
+#     return nodes_features
+     
+            
+# def re_features(adj, features, K):
+#     #传播之后的特征矩阵,size= (N, 1, K+1, d )
+#     nodes_features = torch.empty(features.shape[0], 1, K+1, features.shape[1])
+
+#     for i in range(features.shape[0]):
+
+#         nodes_features[i, 0, 0, :] = features[i]
+
+#     x = features + torch.zeros_like(features)
+
+#     for i in range(K):
+
+#         x = torch.matmul(adj, x)
+
+#         for index in range(features.shape[0]):
+
+#             nodes_features[index, 0, i + 1, :] = x[index]        
+  
+#     nodes_features = nodes_features.squeeze()
+
+
+#     return nodes_features
+
 
 def nor_matrix(adj, a_matrix):
 

@@ -16,6 +16,9 @@ import argparse
 import networkx as nx
 import pandas as pd
 
+# print(torch.cuda.device_count())
+# print(torch.cuda.is_available())
+
 
 # Training settings
 def parse_args():
@@ -76,7 +79,9 @@ def parse_args():
 
 args = parse_args()
 
-device = args.device
+
+device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
+# device = args.device
 
 random.seed(args.seed)
 np.random.seed(args.seed)
@@ -96,6 +101,15 @@ G = nx.Graph()
 edge_index = adj._indices().numpy()
 G.add_edges_from(edge_index.T)   
 # processed_features = utils.re_features(adj, features, args.w_len)  # return (N, hops+1, d)
+
+# pre_process to get random_walk
+# print('pre_process to generate Random Walk Path')
+# path = args.dataset + '_t_num=' + str(args.t_nums) + '_w_len=' + str(args.w_len) + '.pt'
+# if not os.path.isfile(path):
+#     utils.random_walk_gen(G, args.t_nums, args.w_len, args.dataset)
+
+# get all tokens
+# print('Generate Random Walk Path')
 processed_features = utils.get_token(G, features, args.t_nums, args.w_len)  # return (N, hops+1, features.shape[1] * 10)
 
 
@@ -112,9 +126,9 @@ test_data_loader = Data.DataLoader(batch_data_test, batch_size=args.batch_size, 
 
 
 # model configuration
-model = TransformerModel(t_nums=args.t_nums, 
+model = TransformerModel(t_nums=args.t_nums * args.w_len, 
                         n_class=labels.max().item() + 1, 
-                        input_dim=features.shape[1], 
+                        input_dim=features.shape[1] * args.w_len, 
                         pe_dim = args.pe_dim,
                         n_layers=args.n_layers,
                         num_heads=args.n_heads,
@@ -232,14 +246,14 @@ model.load_state_dict(early_stopping.best_state)
 train_loss, train_accuracy = test()
 
 #记录loss和accuracy
-filename = 'train_result.csv'
+filename = args.dataset + '_concat_test_result_concat.csv'
 
-df = pd.DataFrame(columns=['token_nums','walk_length','time', 'epoch','train Loss','training accuracy'])#列名
+df = pd.DataFrame(columns=['token_nums','walk_length','time', 'epoch','train Loss','training accuracy','n_heads'])#列名
  
     
 new_data = pd.DataFrame(
-    [[args.t_nums, args.w_len, train_cost, loading_epoch, train_loss, train_accuracy]], 
-    columns=['token_nums','walk_length','time', 'epoch','train Loss','training accuracy']
+    [[args.t_nums, args.w_len, train_cost, loading_epoch, train_loss, train_accuracy, args.n_heads]], 
+    columns=['token_nums','walk_length','time', 'epoch','train Loss','training accuracy','n_heads']
 )
     
 

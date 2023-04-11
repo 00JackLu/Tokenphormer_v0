@@ -1,5 +1,5 @@
 python train.py --dataset cora --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 512 \
-          --t_nums 20  --w_len 20 --n_heads 8 --n_layers 1 --pe_dim 3 --peak_lr 0.01  --weight_decay=1e-05 
+          --t_nums 20  --w_len 5 --n_heads 8 --n_layers 1 --pe_dim 3 --peak_lr 0.01  --weight_decay=1e-05 
 
 python train.py --dataset citeseer --device 0 --batch_size 2000 --dropout 0.3 --hidden_dim 512 \
           --hops 7  --n_heads 8 --n_layers 1 --pe_dim 3 --peak_lr 0.001  --weight_decay=1e-05 
