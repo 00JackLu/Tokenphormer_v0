@@ -16,9 +16,6 @@ import argparse
 import networkx as nx
 import pandas as pd
 
-# print(torch.cuda.device_count())
-# print(torch.cuda.is_available())
-
 
 # Training settings
 def parse_args():
@@ -40,7 +37,7 @@ def parse_args():
     # model parameters
     parser.add_argument('--t_nums', type=int, default=20,
                         help='nums of token_paths')
-    parser.add_argument('--w_len', type=int, default=20,
+    parser.add_argument('--w_len', type=int, default=3,
                         help='max walk_length of token_path')
     parser.add_argument('--pe_dim', type=int, default=15,
                         help='position embedding size')
@@ -95,22 +92,26 @@ if torch.cuda.is_available():
 adj, features, labels, idx_train, idx_val, idx_test = get_dataset(args.dataset, args.pe_dim)
 
 
+# NAG
+# processed_features = utils.re_features(adj, features, args.t_nums)
+
 
 # change the format into networkx
 G = nx.Graph()
 edge_index = adj._indices().numpy()
 G.add_edges_from(edge_index.T)   
-# processed_features = utils.re_features(adj, features, args.w_len)  # return (N, hops+1, d)
 
 # pre_process to get random_walk
-# print('pre_process to generate Random Walk Path')
-# path = args.dataset + '_t_num=' + str(args.t_nums) + '_w_len=' + str(args.w_len) + '.pt'
-# if not os.path.isfile(path):
-#     utils.random_walk_gen(G, args.t_nums, args.w_len, args.dataset)
+print('pre_process to generate Random Walk Path')
+
+
+path = args.dataset + '_t_num=' + str(args.t_nums) + '_w_len=' + str(args.w_len) + '.pt'
+if not os.path.isfile(path):
+    utils.random_walk_gen(G, args.t_nums, args.w_len, args.dataset)
 
 # get all tokens
-# print('Generate Random Walk Path')
-processed_features = utils.get_token(G, features, args.t_nums, args.w_len)  # return (N, hops+1, features.shape[1] * 10)
+print('Generate tokens')
+processed_features = utils.get_token(features, args.t_nums, args.w_len, args.dataset, device)  # return (N, (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
 
 
 labels = labels.to(device) 
@@ -126,9 +127,9 @@ test_data_loader = Data.DataLoader(batch_data_test, batch_size=args.batch_size, 
 
 
 # model configuration
-model = TransformerModel(t_nums=args.t_nums * args.w_len, 
+model = TransformerModel(t_nums=args.t_nums * (args.w_len+1), 
                         n_class=labels.max().item() + 1, 
-                        input_dim=features.shape[1] * args.w_len, 
+                        input_dim=features.shape[1] * (args.w_len+1), 
                         pe_dim = args.pe_dim,
                         n_layers=args.n_layers,
                         num_heads=args.n_heads,
@@ -136,6 +137,7 @@ model = TransformerModel(t_nums=args.t_nums * args.w_len,
                         ffn_dim=args.ffn_dim,
                         dropout_rate=args.dropout,
                         attention_dropout_rate=args.attention_dropout).to(device)
+
 
 print(model)
 print('total params:', sum(p.numel() for p in model.parameters()))
@@ -196,7 +198,6 @@ def train_valid_epoch(epoch):
     return loss_val, acc_val
 
 
-
 def test():
 
     loss_test = 0
@@ -246,14 +247,14 @@ model.load_state_dict(early_stopping.best_state)
 train_loss, train_accuracy = test()
 
 #记录loss和accuracy
-filename = args.dataset + '_concat_test_result_concat.csv'
+filename = args.dataset + '_test_result.csv'
 
-df = pd.DataFrame(columns=['token_nums','walk_length','time', 'epoch','train Loss','training accuracy','n_heads'])#列名
+df = pd.DataFrame(columns=['token_nums', 'walk_length', 'time', 'hidden_dim', 'parameters', 'n_heads', 'epoch', 'train Loss', 'training accuracy'])#列名
  
     
 new_data = pd.DataFrame(
-    [[args.t_nums, args.w_len, train_cost, loading_epoch, train_loss, train_accuracy, args.n_heads]], 
-    columns=['token_nums','walk_length','time', 'epoch','train Loss','training accuracy','n_heads']
+    [[args.t_nums, args.w_len, train_cost, args.hidden_dim, sum(p.numel() for p in model.parameters()), args.n_heads, loading_epoch, train_loss, train_accuracy]], 
+    columns=['token_nums', 'walk_length', 'time', 'hidden_dim', 'parameters', 'n_heads', 'epoch', 'train Loss', 'training accuracy']
 )
     
 

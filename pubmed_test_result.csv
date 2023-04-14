@@ -1,0 +1,4 @@
+token_nums,walk_length,time,hidden_dim,parameters,n_heads,epoch,train Loss,training accuracy
+20,3,178.6795s,512,3263487,10,8,0.6547,0.8879
+20,4,253.0466s,512,3521023,10,9,0.6553,0.8920
+20,5,OOM
