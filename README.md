@@ -24,5 +24,11 @@ For small-scale datasets, you can download them from https://docs.dgl.ai/tutoria
 
 For large-scale datasets, you can download them from https://github.com/wzfhaha/GRAND-plus.
 
-
-This branch is used to test add two features
+## large-scale datasets download
+```
+pip install gdown
+gdown --id 1G9Wn1OaqMYpkNmbOESYUFrDgzo0Be0-L -O dataset/aminer.zip
+gdown --id 1KauMd-AJXyD6KQQnf4vySjRZEOgWQYvx -O dataset/reddit.zip
+gdown --id 1uItY1AGywFv4nSSFpqBaTEUoDn3w414B -O dataset/Amazon2M.zip
+gdown --id 1VKHFQfRXkkVShE6d4hA9dImXZalz49qa -O dataset/mag_scholar_c.npz
+```

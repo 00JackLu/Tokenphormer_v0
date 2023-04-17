@@ -33,14 +33,11 @@ def get_dataset(dataset, pe_dim):
         idx_test = split_idx['test']
 
         graph = dgl.from_scipy(adj)
-        lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
-        features = torch.cat((features, lpe), dim=1)
+
         adj = utils.sparse_mx_to_torch_sparse_tensor(adj)
-        # print(adj)
-        print(labels)
-        # labels = torch.argmax(labels, 1)
+        lpe = utils.randomwalk_positional_encoding(adj)
+        features = torch.cat((features, lpe), dim=1)
         labels = labels.reshape(-1)
-        print(labels)
 
     elif dataset in {"pubmed", "corafull", "computer", "photo", "cs", "physics","cora", "citeseer"}:
 
@@ -78,10 +75,10 @@ def get_dataset(dataset, pe_dim):
             graph = CiteseerGraphDataset()[0]
 
         graph = dgl.to_bidirected(graph)
-
-        lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
-     
-        features = torch.cat((features, lpe), dim=1)
+        # lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
+        lpe = utils.randomwalk_positional_encoding(adj)
+        
+        features = torch.cat((features, lpe.ndata['PE']), dim=1)
 
 
 

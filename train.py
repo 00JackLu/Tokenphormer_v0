@@ -91,41 +91,43 @@ if torch.cuda.is_available():
 # Load and pre-process data
 adj, features, labels, idx_train, idx_val, idx_test = get_dataset(args.dataset, args.pe_dim)
 
-
-# NAG
-# processed_features = utils.re_features(adj, features, args.t_nums)
-
-
-# change the format into networkx
-G = nx.Graph()
-edge_index = adj._indices().numpy()
-G.add_edges_from(edge_index.T)   
-
 # pre_process to get random_walk
+print('--------------------------------------------')
 print('pre_process to generate Random Walk Path')
+print('--------------------------------------------')
 
 
 path = args.dataset + '_t_num=' + str(args.t_nums) + '_w_len=' + str(args.w_len) + '.pt'
 if not os.path.isfile(path):
-    utils.random_walk_gen(G, args.t_nums, args.w_len, args.dataset)
+    utils.random_walk_gen(adj, args.t_nums, args.w_len, args.dataset)
 
 # get all tokens
 print('Generate tokens')
+print('--------------------------------------------')
 processed_features = utils.get_token(features, args.t_nums, args.w_len, args.dataset, device)  # return (N, (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
+# processed_train_features, processed_val_features, processed_test_features = utils.get_token(features, args.t_nums, args.w_len, args.dataset, device, idx_train, idx_val, idx_test)  # return (N, (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
 
 
 labels = labels.to(device) 
 
+print('split the feature')
+print('--------------------------------------------')
 batch_data_train = Data.TensorDataset(processed_features[idx_train], labels[idx_train])
 batch_data_val = Data.TensorDataset(processed_features[idx_val], labels[idx_val])
 batch_data_test = Data.TensorDataset(processed_features[idx_test], labels[idx_test])
+# batch_data_train = Data.TensorDataset(processed_train_features, labels[idx_train])
+# batch_data_val = Data.TensorDataset(processed_val_features, labels[idx_val])
+# batch_data_test = Data.TensorDataset(processed_test_features, labels[idx_test])
 
-
+print('DataLoader using batch_size')
+print('--------------------------------------------')
 train_data_loader = Data.DataLoader(batch_data_train, batch_size=args.batch_size, shuffle = True)
 val_data_loader = Data.DataLoader(batch_data_val, batch_size=args.batch_size, shuffle = True)
 test_data_loader = Data.DataLoader(batch_data_test, batch_size=args.batch_size, shuffle = True)
 
 
+print('load data into the model')
+print('--------------------------------------------')
 # model configuration
 model = TransformerModel(t_nums=args.t_nums * (args.w_len+1), 
                         n_class=labels.max().item() + 1, 
@@ -138,9 +140,10 @@ model = TransformerModel(t_nums=args.t_nums * (args.w_len+1),
                         dropout_rate=args.dropout,
                         attention_dropout_rate=args.attention_dropout).to(device)
 
-
 print(model)
+print('--------------------------------------------')
 print('total params:', sum(p.numel() for p in model.parameters()))
+print('--------------------------------------------')
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=args.peak_lr, weight_decay=args.weight_decay)
 lr_scheduler = PolynomialDecayLR(
@@ -249,12 +252,12 @@ train_loss, train_accuracy = test()
 #记录loss和accuracy
 filename = args.dataset + '_test_result.csv'
 
-df = pd.DataFrame(columns=['token_nums', 'walk_length', 'time', 'hidden_dim', 'parameters', 'n_heads', 'epoch', 'train Loss', 'training accuracy'])#列名
+df = pd.DataFrame(columns=['t_nums', 'w_len', 'time', 'hidden_dim', 'parameters', 'n_heads', 'epoch', 'train Loss', 'training accuracy'])#列名
  
     
 new_data = pd.DataFrame(
     [[args.t_nums, args.w_len, train_cost, args.hidden_dim, sum(p.numel() for p in model.parameters()), args.n_heads, loading_epoch, train_loss, train_accuracy]], 
-    columns=['token_nums', 'walk_length', 'time', 'hidden_dim', 'parameters', 'n_heads', 'epoch', 'train Loss', 'training accuracy']
+    columns=['t_nums', 'w_len', 'time', 'hidden_dim', 'parameters', 'n_heads', 'epoch', 'train Loss', 'training accuracy']
 )
     
 

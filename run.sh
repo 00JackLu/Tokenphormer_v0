@@ -1,0 +1,2 @@
+python train.py --dataset ogbn-arxiv --device 0 --batch_size 2000 --dropout 0.1 --hidden_dim 512 \
+          --t_nums 20  --w_len 3 --n_heads 8 --n_layers 1 --pe_dim 3 --peak_lr 0.01  --weight_decay=1e-05 
