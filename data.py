@@ -9,17 +9,17 @@ from dgl.data import  CoraFullDataset, AmazonCoBuyComputerDataset, AmazonCoBuyPh
 import random
 # from cache_sample import cache_sample_rand_csr
 
-def get_dataset(dataset, pe_dim):
-    if dataset in {"ogbn-arxiv", "ogbn-products", "ogbn-proteins", "ogbn-papers100M", "ogbn-mag"}:
-        if dataset == "ogbn-arxiv":
+def get_dataset(dataset, pe_dim, rw_dim):
+    if dataset in {"arxiv", "products", "proteins", "papers100M", "mag"}:
+        if dataset == "arxiv":
             dataset = DglNodePropPredDataset(name="ogbn-arxiv")
-        elif dataset == "ogbn-products":
+        elif dataset == "products":
             dataset = DglNodePropPredDataset(name="ogbn-products")
-        elif dataset == "ogbn-proteins":
+        elif dataset == "proteins":
             dataset = DglNodePropPredDataset(name="ogbn-proteins")
-        elif dataset == "ogbn-papers100M":
+        elif dataset == "papers100M":
             dataset = DglNodePropPredDataset(name="ogbn-papers100M")
-        elif dataset == "ogbn-mag":
+        elif dataset == "mag":
             dataset = DglNodePropPredDataset(name="ogbn-mag")
         split_idx = dataset.get_idx_split()
         graph, labels = dataset[0]
@@ -35,8 +35,11 @@ def get_dataset(dataset, pe_dim):
         graph = dgl.from_scipy(adj)
 
         adj = utils.sparse_mx_to_torch_sparse_tensor(adj)
-        lpe = utils.randomwalk_positional_encoding(adj)
+        lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
         features = torch.cat((features, lpe), dim=1)
+        # lpe = utils.randomwalk_positional_encoding(adj, rw_dim)
+        # features = torch.cat((features, lpe.ndata['PE']), dim=1)
+        
         labels = labels.reshape(-1)
 
     elif dataset in {"pubmed", "corafull", "computer", "photo", "cs", "physics","cora", "citeseer"}:
@@ -49,7 +52,6 @@ def get_dataset(dataset, pe_dim):
 
         # data_list = [adj, features, labels, idx_train, idx_val, idx_test]
         adj = data_list[0]
-        print(adj)
         features = data_list[1]
         labels = data_list[2]
 
@@ -76,7 +78,7 @@ def get_dataset(dataset, pe_dim):
 
         graph = dgl.to_bidirected(graph)
         # lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
-        lpe = utils.randomwalk_positional_encoding(adj)
+        lpe = utils.randomwalk_positional_encoding(adj, rw_dim)
         
         features = torch.cat((features, lpe.ndata['PE']), dim=1)
 

@@ -39,6 +39,8 @@ def parse_args():
                         help='nums of token_paths')
     parser.add_argument('--w_len', type=int, default=3,
                         help='max walk_length of token_path')
+    parser.add_argument('--rw_dim', type=int, default=4,
+                        help='RandomWalk embedding k')
     parser.add_argument('--pe_dim', type=int, default=15,
                         help='position embedding size')
     parser.add_argument('--hidden_dim', type=int, default=512,
@@ -89,7 +91,7 @@ if torch.cuda.is_available():
 
 
 # Load and pre-process data
-adj, features, labels, idx_train, idx_val, idx_test = get_dataset(args.dataset, args.pe_dim)
+adj, features, labels, idx_train, idx_val, idx_test = get_dataset(args.dataset, args.pe_dim, args.rw_dim)
 
 # pre_process to get random_walk
 print('--------------------------------------------')
@@ -252,12 +254,12 @@ train_loss, train_accuracy = test()
 #记录loss和accuracy
 filename = args.dataset + '_test_result.csv'
 
-df = pd.DataFrame(columns=['t_nums', 'w_len', 'time', 'hidden_dim', 'parameters', 'n_heads', 'epoch', 'train Loss', 'training accuracy'])#列名
+df = pd.DataFrame(columns=['t_nums', 'w_len', 'time', 'hidden_dim', 'parameters', 'n_heads', 'n_layers', 'epoch', 'train Loss', 'pe_dim', 'rw_dim', 'batch_size', 'peak_lr', 'training accuracy'])#列名
  
     
 new_data = pd.DataFrame(
-    [[args.t_nums, args.w_len, train_cost, args.hidden_dim, sum(p.numel() for p in model.parameters()), args.n_heads, loading_epoch, train_loss, train_accuracy]], 
-    columns=['t_nums', 'w_len', 'time', 'hidden_dim', 'parameters', 'n_heads', 'epoch', 'train Loss', 'training accuracy']
+    [[args.t_nums, args.w_len, train_cost, args.hidden_dim, sum(p.numel() for p in model.parameters()), args.n_heads, args.n_layers, loading_epoch, train_loss, args.pe_dim, args.rw_dim, args.batch_size,args.peak_lr,train_accuracy]], 
+    columns=['t_nums', 'w_len', 'time', 'hidden_dim', 'parameters', 'n_heads', 'n_layers', 'epoch', 'train Loss', 'pe_dim', 'rw_dim', 'batch_size', 'peak_lr', 'training accuracy']
 )
     
 
