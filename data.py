@@ -7,9 +7,13 @@ import os.path
 from dgl.data import CoraGraphDataset, CiteseerGraphDataset, PubmedGraphDataset
 from dgl.data import  CoraFullDataset, AmazonCoBuyComputerDataset, AmazonCoBuyPhotoDataset,CoauthorCSDataset,CoauthorPhysicsDataset
 import random
+import pickle as pkl
+import numpy as np
+from make_dataset import get_train_val_test_split
+from sklearn.preprocessing import StandardScaler
 # from cache_sample import cache_sample_rand_csr
 
-def get_dataset(dataset, pe_dim, rw_dim):
+def get_dataset(dataset, pe_dim, rw_dim, split_seed=0):
     if dataset in {"arxiv", "products", "proteins", "papers100M", "mag"}:
         if dataset == "arxiv":
             dataset = DglNodePropPredDataset(name="ogbn-arxiv")
@@ -35,12 +39,18 @@ def get_dataset(dataset, pe_dim, rw_dim):
         graph = dgl.from_scipy(adj)
 
         adj = utils.sparse_mx_to_torch_sparse_tensor(adj)
-        lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
-        features = torch.cat((features, lpe), dim=1)
+
+        labels = labels.reshape(-1)
+
+        # RWPE
         # lpe = utils.randomwalk_positional_encoding(adj, rw_dim)
         # features = torch.cat((features, lpe.ndata['PE']), dim=1)
+
+        # LPE
+        lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
+        features = torch.cat((features, lpe), dim=1)
         
-        labels = labels.reshape(-1)
+        
 
     elif dataset in {"pubmed", "corafull", "computer", "photo", "cs", "physics","cora", "citeseer"}:
 
@@ -77,14 +87,52 @@ def get_dataset(dataset, pe_dim, rw_dim):
             graph = CiteseerGraphDataset()[0]
 
         graph = dgl.to_bidirected(graph)
-        # lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
-        lpe = utils.randomwalk_positional_encoding(adj, rw_dim)
+
+        # RWPE
+        # lpe = utils.randomwalk_positional_encoding(adj, rw_dim)
+        # features = torch.cat((features, lpe.ndata['PE']), dim=1)
+
+        # LPE
+        lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
+        features = torch.cat((features, lpe), dim=1)
+
+        # col_normalize
+        # features = col_normalize(features)
+
         
-        features = torch.cat((features, lpe.ndata['PE']), dim=1)
+    elif dataset == 'aminer':
+        path = './dataset/'+dataset
+        adj = pkl.load(open(os.path.join(path, "{}.adj.sp.pkl".format(dataset)), "rb"))
+        features = pkl.load(
+            open(os.path.join(path, "{}.features.pkl".format(dataset)), "rb"))
+        labels = pkl.load(
+            open(os.path.join(path, "{}.labels.pkl".format(dataset)), "rb"))
+        random_state = np.random.RandomState(split_seed)
+        idx_train, idx_val, idx_test = get_train_val_test_split(
+            random_state, labels, train_examples_per_class=20, val_examples_per_class=30)
+        # idx_unlabel = np.concatenate((idx_val, idx_test))
+        features = col_normalize(features)
+        
+        labels = torch.tensor(labels)
+        idx_train = torch.tensor(idx_train)
+        idx_val = torch.tensor(idx_val)
+        idx_test = torch.tensor(idx_test)
+        
+        
+        # graph = dgl.from_scipy(adj)
+        
+        # lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
+       
+        # features = torch.cat((features, lpe), dim=1)
+
+        adj = utils.sparse_mx_to_torch_sparse_tensor(adj)
+         
+        print(adj)
+        
+        labels = torch.argmax(labels, -1)
 
 
-
-    elif dataset in {"aminer", "reddit", "Amazon2M"}:
+    elif dataset in {"reddit", "Amazon2M"}:
 
  
         file_path = './dataset/'+dataset+'.pt'
@@ -104,19 +152,28 @@ def get_dataset(dataset, pe_dim, rw_dim):
 
         graph = dgl.from_scipy(adj)
 
-
-        lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
-       
-        features = torch.cat((features, lpe), dim=1)
-
         adj = utils.sparse_mx_to_torch_sparse_tensor(adj)
         
 
         labels = torch.argmax(labels, -1)
+
+        # RWPE
+        # lpe = utils.randomwalk_positional_encoding(adj, rw_dim)
+        # features = torch.cat((features, lpe.ndata['PE']), dim=1)
+
+        # LPE
+        lpe = utils.laplacian_positional_encoding(graph, pe_dim) 
+        features = torch.cat((features, lpe), dim=1)
         
 
     return adj, features, labels, idx_train, idx_val, idx_test
 
 
+def col_normalize(mx):
+    """Column-normalize sparse matrix"""
+    scaler = StandardScaler()
 
+    mx = scaler.fit_transform(mx)
+
+    return mx
 

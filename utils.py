@@ -218,13 +218,56 @@ def get_feature(node, features, num_steps, pt, W):
 
 
 # wrong 1
+# def get_token(features, W, num_steps, dataset, device):
+#     # initial the tensor_size
+#     print(
+#         f"initial the tensor_size:{features.shape[0],(W*(num_steps + 1))+1,features.shape[1]*(num_steps + 1)}")
+#     print('--------------------------------------------')
+#     nodes_features = torch.empty(
+#         features.shape[0], (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
+
+#     print('loading the random walk file now')
+#     print('--------------------------------------------')
+#     # pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', map_location=torch.device('cpu'))
+#     pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' +
+#                     str(num_steps) + '.pt', map_location=device)
+
+#     for node in range(features.shape[0]):
+#         print(f'load the {node} node')
+#         walk = pt[node].tolist()
+#         i = 1
+#         # 遍历walk
+#         for j in range(len(walk)):
+#             sub_list = walk[j]
+#             feature = []
+#             for node in sub_list:
+#                 if feature == []:
+#                     feature = features[node]
+#                 else:
+#                     feature = torch.cat([feature, features[node]], dim=0)
+#                 temp = torch.zeros(features[node].size(
+#                     dim=0) * (num_steps + 1) - feature.size(dim=0))
+#                 # print(f'the {node}')
+#                 nodes_features[node, i, :] = torch.cat([feature, temp], dim=0)
+#                 i += 1
+
+#     # save the nodes_feature tensor
+#     # feature_path = dataset + '_feature' + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt'
+#     # torch.save(nodes_features, feature_path)
+#     # print("save feature success")
+#     print("nodes_features.size() :", nodes_features.size())
+#     print('--------------------------------------------')
+#     return nodes_features
+
+
+# method 3:sum
 def get_token(features, W, num_steps, dataset, device):
     # initial the tensor_size
     print(
-        f"initial the tensor_size:{features.shape[0],(W*(num_steps + 1))+1,features.shape[1]*(num_steps + 1)}")
+        f"initial the tensor_size:{features.shape[0],(W*(num_steps + 1))+1,features.shape[1]}")
     print('--------------------------------------------')
     nodes_features = torch.empty(
-        features.shape[0], (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
+        features.shape[0], (W*(num_steps + 1))+1, features.shape[1])
 
     print('loading the random walk file now')
     print('--------------------------------------------')
@@ -232,6 +275,7 @@ def get_token(features, W, num_steps, dataset, device):
     pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' +
                     str(num_steps) + '.pt', map_location=device)
 
+    print(features.shape[0])
     for node in range(features.shape[0]):
         print(f'load the {node} node')
         walk = pt[node].tolist()
@@ -240,15 +284,14 @@ def get_token(features, W, num_steps, dataset, device):
         for j in range(len(walk)):
             sub_list = walk[j]
             feature = []
-            for node in sub_list:
+            for sub_node in sub_list:
+                
                 if feature == []:
-                    feature = features[node]
+                    feature = features[sub_node]
                 else:
-                    feature = torch.cat([feature, features[node]], dim=0)
-                temp = torch.zeros(features[node].size(
-                    dim=0) * (num_steps + 1) - feature.size(dim=0))
+                    feature = torch.add(feature, features[sub_node])
                 # print(f'the {node}')
-                nodes_features[node, i, :] = torch.cat([feature, temp], dim=0)
+                nodes_features[node, i, :] = feature
                 i += 1
 
     # save the nodes_feature tensor
@@ -267,124 +310,3 @@ def nor_matrix(adj, a_matrix):
     nor_matrix = nor_matrix / row_sum
 
     return nor_matrix
-
-
-# class RandomWalkPE(BaseTransform):
-#     r"""Random Walk Positional Encoding, as introduced in
-#     `Graph Neural Networks with Learnable Structural and Positional Representations
-#     <https://arxiv.org/abs/2110.07875>`__
-
-#     This module only works for homogeneous graphs.
-
-#     Parameters
-#     ----------
-#     k : int
-#         Number of random walk steps. The paper found the best value to be 16 and 20
-#         for two experiments.
-#     feat_name : str, optional
-#         Name to store the computed positional encodings in ndata.
-#     eweight_name : str, optional
-#         Name to retrieve the edge weights. Default: None, not using the edge weights.
-
-#     Example
-#     -------
-
-#     >>> import dgl
-#     >>> from dgl import RandomWalkPE
-
-#     >>> transform = RandomWalkPE(k=2)
-#     >>> g = dgl.graph(([0, 1, 1], [1, 1, 0]))
-#     >>> g = transform(g)
-#     >>> print(g.ndata['PE'])
-#     tensor([[0.0000, 0.5000],
-#             [0.5000, 0.7500]])
-#     """
-#     def __init__(self, k, feat_name='PE', eweight_name=None):
-#         self.k = k
-#         self.feat_name = feat_name
-#         self.eweight_name = eweight_name
-
-#     def __call__(self, g):
-#         PE = functional.random_walk_pe(g, k=self.k, eweight_name=self.eweight_name)
-#         g.ndata[self.feat_name] = F.copy_to(PE, g.device)
-
-#         return g
-
-
-# [docs]class LaplacianPE(BaseTransform):
-#     r"""Laplacian Positional Encoding, as introduced in
-#     `Benchmarking Graph Neural Networks
-#     <https://arxiv.org/abs/2003.00982>`__
-
-#     This module only works for homogeneous bidirected graphs.
-
-#     Parameters
-#     ----------
-#     k : int
-#         Number of smallest non-trivial eigenvectors to use for positional encoding.
-#     feat_name : str, optional
-#         Name to store the computed positional encodings in ndata.
-#     eigval_name : str, optional
-#         If None, store laplacian eigenvectors only.
-#         Otherwise, it's the name to store corresponding laplacian eigenvalues in ndata.
-#         Default: None.
-#     padding : bool, optional
-#         If False, raise an exception when k>=n.
-#         Otherwise, add zero paddings in the end of eigenvectors and 'nan' paddings
-#         in the end of eigenvalues when k>=n.
-#         Default: False.
-#         n is the number of nodes in the given graph.
-
-#     Example
-#     -------
-#     >>> import dgl
-#     >>> from dgl import LaplacianPE
-#     >>> transform1 = LaplacianPE(k=3)
-#     >>> transform2 = LaplacianPE(k=5, padding=True)
-#     >>> transform3 = LaplacianPE(k=5, feat_name='eigvec', eigval_name='eigval', padding=True)
-#     >>> g = dgl.graph(([0,1,2,3,4,2,3,1,4,0], [2,3,1,4,0,0,1,2,3,4]))
-#     >>> g1 = transform1(g)
-#     >>> print(g1.ndata['PE'])
-#     tensor([[ 0.6325,  0.1039,  0.3489],
-#             [-0.5117,  0.2826,  0.6095],
-#             [ 0.1954,  0.6254, -0.5923],
-#             [-0.5117, -0.4508, -0.3938],
-#             [ 0.1954, -0.5612,  0.0278]])
-#     >>> g2 = transform2(g)
-#     >>> print(g2.ndata['PE'])
-#     tensor([[-0.6325, -0.1039,  0.3489, -0.2530,  0.0000],
-#             [ 0.5117, -0.2826,  0.6095,  0.4731,  0.0000],
-#             [-0.1954, -0.6254, -0.5923, -0.1361,  0.0000],
-#             [ 0.5117,  0.4508, -0.3938, -0.6295,  0.0000],
-#             [-0.1954,  0.5612,  0.0278,  0.5454,  0.0000]])
-#     >>> g3 = transform3(g)
-#     >>> print(g3.ndata['eigval'])
-#     tensor([[0.6910, 0.6910, 1.8090, 1.8090,    nan],
-#             [0.6910, 0.6910, 1.8090, 1.8090,    nan],
-#             [0.6910, 0.6910, 1.8090, 1.8090,    nan],
-#             [0.6910, 0.6910, 1.8090, 1.8090,    nan],
-#             [0.6910, 0.6910, 1.8090, 1.8090,    nan]])
-#     >>> print(g3.ndata['eigvec'])
-#     tensor([[ 0.6325, -0.1039,  0.3489,  0.2530,  0.0000],
-#             [-0.5117, -0.2826,  0.6095, -0.4731,  0.0000],
-#             [ 0.1954, -0.6254, -0.5923,  0.1361,  0.0000],
-#             [-0.5117,  0.4508, -0.3938,  0.6295,  0.0000],
-#             [ 0.1954,  0.5612,  0.0278, -0.5454,  0.0000]])
-#     """
-#     def __init__(self, k, feat_name='PE', eigval_name=None, padding=False):
-#         self.k = k
-#         self.feat_name = feat_name
-#         self.eigval_name = eigval_name
-#         self.padding = padding
-
-#     def __call__(self, g):
-#         if self.eigval_name:
-#             PE, eigval = functional.laplacian_pe(g, k=self.k, padding=self.padding,
-#                                                  return_eigval=True)
-#             eigval = F.repeat(F.reshape(eigval, [1,-1]), g.num_nodes(), dim=0)
-#             g.ndata[self.eigval_name] = F.copy_to(eigval, g.device)
-#         else:
-#             PE = functional.laplacian_pe(g, k=self.k, padding=self.padding)
-#         g.ndata[self.feat_name] = F.copy_to(PE, g.device)
-
-#         return g

@@ -1,0 +1,3 @@
+t_nums,w_len,time,hidden_dim,parameters,n_heads,n_layers,epoch,train Loss,pe_dim,rw_dim,batch_size,peak_lr,training accuracy
+30,5,93.3610s,512,2969603,10,1,10,0.2835,3,4,1000,0.01,0.9167
+20,5,69.7150s,512,2969603,10,1,12,0.3309,3,4,1000,0.01,0.9037

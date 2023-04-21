@@ -91,7 +91,10 @@ if torch.cuda.is_available():
 
 
 # Load and pre-process data
-adj, features, labels, idx_train, idx_val, idx_test = get_dataset(args.dataset, args.pe_dim, args.rw_dim)
+adj, features, labels, idx_train, idx_val, idx_test = get_dataset(args.dataset, args.pe_dim, args.rw_dim, args.seed)
+# adj, features, labels, idx_train, idx_val, idx_test = get_dataset(args.dataset, args.pe_dim)
+# adj, features, labels, idx_train, idx_val, idx_test = get_dataset(args.dataset, args.pe_dim, args.seed)
+
 
 # pre_process to get random_walk
 print('--------------------------------------------')
@@ -133,7 +136,8 @@ print('--------------------------------------------')
 # model configuration
 model = TransformerModel(t_nums=args.t_nums * (args.w_len+1), 
                         n_class=labels.max().item() + 1, 
-                        input_dim=features.shape[1] * (args.w_len+1), 
+                        # input_dim=features.shape[1] * (args.w_len+1), 
+                        input_dim=features.shape[1], 
                         pe_dim = args.pe_dim,
                         n_layers=args.n_layers,
                         num_heads=args.n_heads,
@@ -252,7 +256,7 @@ model.load_state_dict(early_stopping.best_state)
 train_loss, train_accuracy = test()
 
 #记录loss和accuracy
-filename = args.dataset + '_test_result.csv'
+filename = args.dataset + '_method_add_test_result.csv'
 
 df = pd.DataFrame(columns=['t_nums', 'w_len', 'time', 'hidden_dim', 'parameters', 'n_heads', 'n_layers', 'epoch', 'train Loss', 'pe_dim', 'rw_dim', 'batch_size', 'peak_lr', 'training accuracy'])#列名
  
