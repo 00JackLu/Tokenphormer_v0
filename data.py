@@ -98,6 +98,7 @@ def get_dataset(dataset, pe_dim, rw_dim, split_seed=0):
 
         # col_normalize
         # features = col_normalize(features)
+        # features = torch.tensor(features)
 
         
     elif dataset == 'aminer':

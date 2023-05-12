@@ -12,9 +12,11 @@ from model import TransformerModel
 from lr import PolynomialDecayLR
 import os.path
 import torch.utils.data as Data
+from torch.utils.data import Dataset, Subset
 import argparse
-import networkx as nx
 import pandas as pd
+import logging
+logging.basicConfig(filename="train_process", level=logging.INFO)
 
 
 # Training settings
@@ -43,7 +45,7 @@ def parse_args():
                         help='RandomWalk embedding k')
     parser.add_argument('--pe_dim', type=int, default=15,
                         help='position embedding size')
-    parser.add_argument('--hidden_dim', type=int, default=512,
+    parser.add_argument('--hidden_dim', type=int, default=256,
                         help='Hidden layer size')
     parser.add_argument('--ffn_dim', type=int, default=64,
                         help='FFN layer size')
@@ -94,7 +96,9 @@ if torch.cuda.is_available():
 adj, features, labels, idx_train, idx_val, idx_test = get_dataset(args.dataset, args.pe_dim, args.rw_dim, args.seed)
 # adj, features, labels, idx_train, idx_val, idx_test = get_dataset(args.dataset, args.pe_dim)
 # adj, features, labels, idx_train, idx_val, idx_test = get_dataset(args.dataset, args.pe_dim, args.seed)
-
+# m = torch.nn.Linear(, 30)
+# input = torch.randn(features[0], fe)
+# output = m(input)
 
 # pre_process to get random_walk
 print('--------------------------------------------')
@@ -106,35 +110,88 @@ path = args.dataset + '_t_num=' + str(args.t_nums) + '_w_len=' + str(args.w_len)
 if not os.path.isfile(path):
     utils.random_walk_gen(adj, args.t_nums, args.w_len, args.dataset)
 
-# get all tokens
-print('Generate tokens')
-print('--------------------------------------------')
-processed_features = utils.get_token(features, args.t_nums, args.w_len, args.dataset, device)  # return (N, (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
-# processed_train_features, processed_val_features, processed_test_features = utils.get_token(features, args.t_nums, args.w_len, args.dataset, device, idx_train, idx_val, idx_test)  # return (N, (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
+# utils.get_token(features, args.t_nums, args.w_len, args.dataset, device)  # return (N, (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
+
+# # get all tokens
+# print('Generate tokens')
+# print('--------------------------------------------')
+# processed_features = utils.get_token(features, args.t_nums, args.w_len, args.dataset, device)  # return (N, (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
 
 
-labels = labels.to(device) 
+# labels = labels.to(device) 
 
-print('split the feature')
-print('--------------------------------------------')
-batch_data_train = Data.TensorDataset(processed_features[idx_train], labels[idx_train])
-batch_data_val = Data.TensorDataset(processed_features[idx_val], labels[idx_val])
-batch_data_test = Data.TensorDataset(processed_features[idx_test], labels[idx_test])
-# batch_data_train = Data.TensorDataset(processed_train_features, labels[idx_train])
-# batch_data_val = Data.TensorDataset(processed_val_features, labels[idx_val])
-# batch_data_test = Data.TensorDataset(processed_test_features, labels[idx_test])
+# print('split the feature')
+# print('--------------------------------------------')
+# batch_data_train = Data.TensorDataset(processed_features[idx_train], labels[idx_train])
+# batch_data_val = Data.TensorDataset(processed_features[idx_val], labels[idx_val])
+# batch_data_test = Data.TensorDataset(processed_features[idx_test], labels[idx_test])
 
-print('DataLoader using batch_size')
-print('--------------------------------------------')
-train_data_loader = Data.DataLoader(batch_data_train, batch_size=args.batch_size, shuffle = True)
-val_data_loader = Data.DataLoader(batch_data_val, batch_size=args.batch_size, shuffle = True)
-test_data_loader = Data.DataLoader(batch_data_test, batch_size=args.batch_size, shuffle = True)
 
+
+# print('--------------------------------------------')
+# train_data_loader = Data.DataLoader(batch_data_train, batch_size=args.batch_size, shuffle = True)
+# val_data_loader = Data.DataLoader(batch_data_val, batch_size=args.batch_size, shuffle = True)
+# test_data_loader = Data.DataLoader(batch_data_test, batch_size=args.batch_size, shuffle = True)
+
+
+# Loading Tokens
+class LoadWalkDataset(Dataset):
+    def __init__(self, path, labels):
+        self.file_path = path
+        self.labels = labels
+
+    def __getitem__(self, idx):   
+        print(f'load the {idx} node')   
+        pt = torch.load(self.file_path, map_location=torch.device('cpu'))
+        walk = pt[idx].tolist()
+        node_features = torch.empty(len(walk) + 1, features.shape[1])
+        i = 0
+        # 遍历walk
+        for j in range(len(walk)):
+            sub_list = walk[j]
+            feature = []
+            for node in sub_list:
+                if feature == []:
+                    feature = features[node]
+                else:  
+                    feature = feature + features[node] 
+
+            node_features[i, :] = feature  
+            i += 1
+        return (node_features, self.labels[idx])
+
+
+# class LoadWalkDataset(Dataset):
+#     def __init__(self, path, labels):
+#         self.file_path = path
+#         self.labels = labels
+
+#     def __getitem__(self, idx):   
+#         print(f'load the {idx} node')   
+#         pt = torch.load(self.file_path, map_location=torch.device('cpu'))
+#         return (pt[idx], self.labels[idx])
+    
 
 print('load data into the model')
 print('--------------------------------------------')
+
+dataset = LoadWalkDataset(path, labels)
+
+
+batch_data_train = Subset(dataset, idx_train)
+batch_data_val = Subset(dataset, idx_val)
+batch_data_test = Subset(dataset, idx_test)
+
+
+print('DataLoader using batch_size')
+print('--------------------------------------------')
+train_data_loader = Data.DataLoader(batch_data_train, batch_size=args.batch_size, shuffle = True, num_workers = 16)
+val_data_loader = Data.DataLoader(batch_data_val, batch_size=args.batch_size, shuffle = True, num_workers = 16)
+test_data_loader = Data.DataLoader(batch_data_test, batch_size=args.batch_size, shuffle = True, num_workers = 16)
+
+
 # model configuration
-model = TransformerModel(t_nums=args.t_nums * (args.w_len+1), 
+model = TransformerModel(t_nums=args.t_nums, 
                         n_class=labels.max().item() + 1, 
                         # input_dim=features.shape[1] * (args.w_len+1), 
                         input_dim=features.shape[1], 
@@ -204,6 +261,11 @@ def train_valid_epoch(epoch):
         'loss_val: {:.4f}'.format(loss_val),
         'acc_val: {:.4f}'.format(acc_val/len(idx_val)))
 
+    logging.info('Epoch: {:04d}'.format(epoch+1),
+        'loss_train: {:.4f}'.format(loss_train_b),
+        'acc_train: {:.4f}'.format(acc_train_b/len(idx_train)),
+        'loss_val: {:.4f}'.format(loss_val),
+        'acc_val: {:.4f}'.format(acc_val/len(idx_val)))
     return loss_val, acc_val
 
 
@@ -231,7 +293,6 @@ def test():
 
     print(result)
     return train_loss, train_accuracy
-
 
 
 t_total = time.time()

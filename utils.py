@@ -116,191 +116,243 @@ def random_walk_gen(adj, t_num, w_len, dataset):
     # 遍历张量
     for i in range(G.nodes().size(dim=0)):
         strat_nodes = [i] * t_num
-        token_path = dgl.sampling.random_walk(G, strat_nodes, length=w_len)
+
+        token_path = dgl.sampling.random_walk(G, strat_nodes, length=w_len, restart_prob=0.2)
         nodes_features.append(token_path[0])
-    torch.save(nodes_features, dataset + '_t_num=' +
-               str(t_num) + '_w_len=' + str(w_len) + '.pt')
+    torch.save(nodes_features, dataset + '_t_num=' + str(t_num) + '_w_len=' + str(w_len) + '.pt')
+    
+    nodes_features2 = []
+    for i in range(G.nodes().size(dim=0)):
+        strat_nodes = [i] * t_num
+
+        token_path = dgl.sampling.random_walk(G, strat_nodes, length=w_len, restart_prob=0.2)
+        nodes_features2.append(token_path[0])
+    torch.save(nodes_features2, dataset + '_t_num=' + str(t_num) + '_w_len=' + str(w_len) + '_back.pt')
 
 
-def get_feature(node, features, num_steps, pt, W):
-    processed_features = torch.empty(
-        (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
-    walk = pt[node].tolist()
-    i = 1
-    # 遍历walk
-    for j in range(len(walk)):
-        sub_list = walk[j]
-        feature = []
-        for sub_node in sub_list:
-            if feature == []:
-                feature = features[sub_node]
-            else:
-                feature = torch.cat([feature, features[sub_node]], dim=0)
-            temp = torch.zeros(features[sub_node].size(
-                dim=0) * (num_steps + 1) - feature.size(dim=0))
-
-            processed_features[i, :] = torch.cat([feature, temp], dim=0)
-            i += 1
-    return processed_features
-
-
-# def get_token(features, W, num_steps, dataset, device, idx_train, idx_val, idx_test):
-#     # initial the tensor_size
-#     # print(f"initial the tensor_size:{features.shape[0],(W*(num_steps + 1))+1,features.shape[1]*(num_steps + 1)}")
-#     print('--------------------------------------------')
-#     processed_train_features = torch.empty(len(idx_train), (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
-#     processed_val_features = torch.empty(len(idx_val), (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
-#     processed_test_features = torch.empty(len(idx_test), (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
-
-#     # nodes_features = torch.empty(features.shape[0], (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
-
-#     print('loading the random walk file now')
-#     print('--------------------------------------------')
-#     # pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', map_location=torch.device('cpu'))
-#     pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', map_location=device)
-
-#     for node in range(features.shape[0]):
-#         print(f'load the {node} node')
-#         if node in idx_train:
-#             processed_train_features[node,:] = get_feature(node, features, num_steps, pt, W)
-#         elif node in idx_val:
-#             processed_val_features[node,:] = get_feature(node, features, num_steps, pt, W)
-#         elif node in idx_test:
-#             processed_test_features[node,:] = get_feature(node, features, num_steps, pt, W)
-#     return processed_train_features, processed_val_features, processed_test_features
-
-
-#     # save the nodes_feature tensor
-#     # feature_path = dataset + '_feature' + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt'
-#     # torch.save(nodes_features, feature_path)
-#     # print("save feature success")
-#     print("nodes_features.size() :", nodes_features.size())
-#     print('--------------------------------------------')
-#     return nodes_features
-
-
+# 上下文 sum + cat
 # def get_token(features, W, num_steps, dataset, device):
-#     # initial the tensor_size
-#     print(f"initial the tensor_size:{features.shape[0],(W*(num_steps + 1))+1,features.shape[1]*(num_steps + 1)}")
-#     print('--------------------------------------------')
-#     nodes_features = torch.empty(features.shape[0], (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
-
-#     print('loading the random walk file now')
-#     print('--------------------------------------------')
-#     # pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', map_location=torch.device('cpu'))
+#     # print(features.shape[1])
+#     # nodes_features = torch.empty(features.shape[0], 2*W+1, features.shape[1]*(num_steps+1))
+#     nodes_features = torch.empty(features.shape[0], W+1, features.shape[1]*3)
+    
+#     print('loading the pt file now')
 #     pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', map_location=device)
-
+#     pt_back = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '_back.pt', map_location=device)
+#     # print(f"Random Walk Begin! Random Walk nums:{W}, length:{num_steps}")
 #     for node in range(features.shape[0]):
 #         print(f'load the {node} node')
 #         walk = pt[node].tolist()
-#         i = 1
+#         walk_back = pt_back[node].tolist()
+#         feature_raw = features[node]
+#         i = 0
 #         # 遍历walk
-#         for j in range(len(walk)):
+#         for j in range(W):
 #             sub_list = walk[j]
-#             feature = []
-#             for sub_node in sub_list:
-#                 if feature == []:
-#                     feature = features[sub_node]
+#             sub_list2 = walk_back[j]
+#             feature = torch.zeros(features.shape[1])
+#             feature2 = torch.zeros(features.shape[1])
+#             feature_raw = features[node]
+#             # node2 = sub_list[0]
+#             isFirstNode = True
+#             for node2 in sub_list:
+#                 if isFirstNode == True:
+#                     isFirstNode = False
+#                     continue
+#                 if node2 == -1:  continue
+#                 else:   nf = features[node2]
+                
+#                 feature = feature + nf
+                
+#             for node3 in sub_list2[1:]:
+#                 if node3 == -1:  nf = torch.zeros(features[node3].size(dim=0))
+#                 else:   nf = features[node3]
+                
+#                 if feature2 == []:
+#                     feature2 = nf
 #                 else:
-#                     feature = torch.cat([feature, features[sub_node]], dim=0)
-#                 temp = torch.zeros(features[sub_node].size(dim=0) * (num_steps + 1) - feature.size(dim=0))
-
-#                 nodes_features[node, i, :] = torch.cat([feature, temp], dim=0)
-#                 i += 1
-
-#     # save the nodes_feature tensor
-#     # feature_path = dataset + '_feature' + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt'
-#     # torch.save(nodes_features, feature_path)
-#     # print("save feature success")
-#     print("nodes_features.size() :", nodes_features.size())
-#     print('--------------------------------------------')
-#     return nodes_features
+#                     feature2 = torch.cat([feature2, nf], dim=0)
+                    
+#                 feature2 = nf + feature
+                    
+#             feature = torch.cat([feature2, feature_raw, feature], dim=0)
+#             nodes_features[node, i, :] = feature  
+#             i += 1
+            
+#     print(nodes_features.size())       
+#     return nodes_features   
 
 
-# wrong 1
+# 上下文 cat  
 # def get_token(features, W, num_steps, dataset, device):
-#     # initial the tensor_size
-#     print(
-#         f"initial the tensor_size:{features.shape[0],(W*(num_steps + 1))+1,features.shape[1]*(num_steps + 1)}")
-#     print('--------------------------------------------')
-#     nodes_features = torch.empty(
-#         features.shape[0], (W*(num_steps + 1))+1, features.shape[1]*(num_steps + 1))
-
-#     print('loading the random walk file now')
-#     print('--------------------------------------------')
-#     # pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', map_location=torch.device('cpu'))
-#     pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' +
-#                     str(num_steps) + '.pt', map_location=device)
-
+#     # print(features.shape[1])
+#     # nodes_features = torch.empty(features.shape[0], 2*W+1, features.shape[1]*(num_steps+1))
+#     nodes_features = torch.empty(features.shape[0], W+1, features.shape[1]*(num_steps*2 + 1))
+    
+#     print('loading the pt file now')
+#     pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', map_location=torch.device('cpu'))
+#     pt_back = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '_back.pt', map_location=torch.device('cpu'))
+#     # print(f"Random Walk Begin! Random Walk nums:{W}, length:{num_steps}")
 #     for node in range(features.shape[0]):
-#         print(f'load the {node} node')
+#         # print(f'load the {node} node')
 #         walk = pt[node].tolist()
-#         i = 1
+#         walk_back = pt_back[node].tolist()
+#         i = 0
 #         # 遍历walk
-#         for j in range(len(walk)):
+#         for j in range(W):
 #             sub_list = walk[j]
+#             sub_list2 = walk_back[j]
 #             feature = []
-#             for node in sub_list:
+#             feature2 = []
+#             # node2 = sub_list[0]
+#             for node2 in sub_list:
+#                 if node2 == -1:  nf = torch.zeros(features[node2].size(dim=0))
+#                 else:   nf = features[node2]
+                
 #                 if feature == []:
-#                     feature = features[node]
+#                     feature = nf
 #                 else:
-#                     feature = torch.cat([feature, features[node]], dim=0)
-#                 temp = torch.zeros(features[node].size(
-#                     dim=0) * (num_steps + 1) - feature.size(dim=0))
-#                 # print(f'the {node}')
-#                 nodes_features[node, i, :] = torch.cat([feature, temp], dim=0)
-#                 i += 1
+#                     feature = torch.cat([feature, nf], dim=0)
 
-#     # save the nodes_feature tensor
-#     # feature_path = dataset + '_feature' + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt'
-#     # torch.save(nodes_features, feature_path)
-#     # print("save feature success")
-#     print("nodes_features.size() :", nodes_features.size())
-#     print('--------------------------------------------')
+#             for node3 in sub_list2[1:]:
+#                 if node3 == -1:  nf = torch.zeros(features[node3].size(dim=0))
+#                 else:   nf = features[node3]
+                
+#                 if feature2 == []:
+#                     feature2 = nf
+#                 else:
+#                     feature2 = torch.cat([feature2, nf], dim=0)
+                    
+#             feature = torch.cat([feature2, feature], dim=0)
+#             nodes_features[node, i, :] = feature  
+#             i += 1
+            
 #     return nodes_features
 
 
-# method 3:sum
+# 上下文 cat  
+# def get_token(features, W, num_steps, dataset, device):
+#     # print(features.shape[1])
+#     # nodes_features = torch.empty(features.shape[0], 2*W+1, features.shape[1]*(num_steps+1))
+#     nodes_features = torch.empty(features.shape[0], W+1, features.shape[1]*(num_steps*2 + 1))
+    
+#     print('loading the pt file now')
+#     pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', map_location=torch.device('cpu'))
+#     pt_back = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '_back.pt', map_location=torch.device('cpu'))
+#     # print(f"Random Walk Begin! Random Walk nums:{W}, length:{num_steps}")
+#     for node in range(features.shape[0]):
+#         # print(f'load the {node} node')
+#         walk = pt[node].tolist()
+#         walk_back = pt_back[node].tolist()
+#         i = 0
+#         # 遍历walk
+#         for j in range(W):
+#             sub_list = walk[j]
+#             sub_list2 = walk_back[j]
+#             feature = []
+#             feature2 = []
+#             # node2 = sub_list[0]
+#             for node2 in sub_list:
+#                 if node2 == -1:  nf = torch.zeros(features[node2].size(dim=0))
+#                 else:   nf = features[node2]
+                
+#                 if feature == []:
+#                     feature = nf
+#                 else:
+#                     feature = torch.cat([feature, nf], dim=0)
+
+#             for node3 in sub_list2[1:]:
+#                 if node3 == -1:  nf = torch.zeros(features[node3].size(dim=0))
+#                 else:   nf = features[node3]
+                
+#                 if feature2 == []:
+#                     feature2 = nf
+#                 else:
+#                     feature2 = torch.cat([feature2, nf], dim=0)
+                    
+#             feature = torch.cat([feature2, feature], dim=0)
+#             nodes_features[node, i, :] = feature  
+#             i += 1
+            
+#     return nodes_features
+
+
+# 上下文 cat, then linear  
+# def get_token(features, W, num_steps, dataset, device):
+#     # print(features.shape[1])
+#     # nodes_features = torch.empty(features.shape[0], 2*W+1, features.shape[1]*(num_steps+1))
+#     nodes_features = torch.empty(features.shape[0], W+1, features.shape[1]*(num_steps*2 + 1))
+    
+#     print('loading the pt file now')
+#     pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', map_location=torch.device('cpu'))
+#     pt_back = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '_back.pt', map_location=torch.device('cpu'))
+#     # print(f"Random Walk Begin! Random Walk nums:{W}, length:{num_steps}")
+#     for node in range(features.shape[0]):
+#         # print(f'load the {node} node')
+#         walk = pt[node].tolist()
+#         walk_back = pt_back[node].tolist()
+#         i = 0
+#         # 遍历walk
+#         for j in range(W):
+#             sub_list = walk[j]
+#             sub_list2 = walk_back[j]
+#             feature = []
+#             feature2 = []
+#             # node2 = sub_list[0]
+#             for node2 in sub_list:
+#                 if node2 == -1:  nf = torch.zeros(features[node2].size(dim=0))
+#                 else:   nf = features[node2]
+                
+#                 if feature == []:
+#                     feature = nf
+#                 else:
+#                     feature = torch.cat([feature, nf], dim=0)
+
+#             for node3 in sub_list2[1:]:
+#                 if node3 == -1:  nf = torch.zeros(features[node3].size(dim=0))
+#                 else:   nf = features[node3]
+                
+#                 if feature2 == []:
+#                     feature2 = nf
+#                 else:
+#                     feature2 = torch.cat([feature2, nf], dim=0)
+                    
+#             feature = torch.cat([feature2, feature], dim=0)
+#             nodes_features[node, i, :] = feature  
+#             i += 1
+            
+#     return nodes_features
+
+
+# pre-process
 def get_token(features, W, num_steps, dataset, device):
-    # initial the tensor_size
-    print(
-        f"initial the tensor_size:{features.shape[0],(W*(num_steps + 1))+1,features.shape[1]}")
-    print('--------------------------------------------')
-    nodes_features = torch.empty(
-        features.shape[0], (W*(num_steps + 1))+1, features.shape[1])
-
-    print('loading the random walk file now')
-    print('--------------------------------------------')
-    # pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', map_location=torch.device('cpu'))
-    pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' +
-                    str(num_steps) + '.pt', map_location=device)
-
-    print(features.shape[0])
+    # print(features.shape[1])
+    # nodes_features = torch.empty(features.shape[0], 2*W+1, features.shape[1]*(num_steps+1))
+    nodes_features = torch.empty(features.shape[0], W+1, features.shape[1])
+    
+    print('loading the pt file now')
+    pt = torch.load(dataset + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt', torch.device('cpu'))
+    # print(f"Random Walk Begin! Random Walk nums:{W}, length:{num_steps}")
     for node in range(features.shape[0]):
         print(f'load the {node} node')
         walk = pt[node].tolist()
-        i = 1
+        i = 0
         # 遍历walk
-        for j in range(len(walk)):
+        for j in range(W):
             sub_list = walk[j]
             feature = []
-            for sub_node in sub_list:
-                
+            for node in sub_list:
                 if feature == []:
-                    feature = features[sub_node]
-                else:
-                    feature = torch.add(feature, features[sub_node])
-                # print(f'the {node}')
-                nodes_features[node, i, :] = feature
-                i += 1
+                    feature = features[node]
+                else:  
+                    feature = feature + features[node] 
 
-    # save the nodes_feature tensor
-    # feature_path = dataset + '_feature' + '_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt'
-    # torch.save(nodes_features, feature_path)
-    # print("save feature success")
-    print("nodes_features.size() :", nodes_features.size())
-    print('--------------------------------------------')
-    return nodes_features
+            nodes_features[node, i, :] = feature  
+            i += 1
+
+    torch.save(nodes_features, dataset + '_fea_t_num=' + str(W) + '_w_len=' + str(num_steps) + '.pt')
+        
+    # return nodes_features
 
 
 def nor_matrix(adj, a_matrix):
