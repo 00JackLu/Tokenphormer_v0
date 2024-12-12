@@ -1,3 +1,5 @@
+This is the test phase of Tokenphormer, the final version please ref https://github.com/Dodo-D-Caster/Tokenphormer
+
 # Token_net
 This is the code for our 2023 Research
 
